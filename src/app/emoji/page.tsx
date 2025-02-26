@@ -1,3 +1,8 @@
+"use client";
+
+import GameBoxes from "@/components/_components/gameboxes";
+
 export default function Page() {
-  return <div>Emoji</div>;
-}
+  return (
+    <GameBoxes imgSrc="/emoji_group.png" />
+  )}

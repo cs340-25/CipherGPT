@@ -26,6 +26,22 @@ export default function Page() {
 
         </div>
         <h2 className="text-3xl font-bold">SOLO</h2>
+        <div className="flex flex-row items-center justify-center space-x-12">
+          <RepeatableCard
+            imageSrc="/ascii.png"
+            label="ASCII"
+            link="/ascii"
+            bgColor="#b4aafc"
+          />
+
+          <RepeatableCard
+            imageSrc="/morse-code.png"
+            label="MORSE CODE"
+            link="/morse-code"
+            bgColor="#b6e15d"
+          />
+
+        </div>
       </div>
     </div>
   );

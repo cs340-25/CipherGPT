@@ -4,5 +4,5 @@ import GameBoxes from "@/components/_components/gameboxes";
 
 export default function Page() {
   return (
-    <GameBoxes imgSrc="/phone-call.png" />
+    <GameBoxes imgSrc="/ascii.png" />
   )}
