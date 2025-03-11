@@ -8,22 +8,34 @@ import {marked} from "marked";
 
 interface GameBoxesProps {
   imgSrc: string;
+  systemMessage?: string;
 }
 
-function GameBoxes({ imgSrc }: GameBoxesProps) {
+function GameBoxes({ imgSrc, systemMessage }: GameBoxesProps) {
   const [inputValue, setInputValue] = useState("");
   const [messageList, setMessageList] = useState([
-    { role: "system", content: "you are to only communicate with emojis and emoticons, nothing else. You are to use no words under no circumstances." },
+    { role: "system", content: systemMessage || "You are a helpful assistant." },
   ]);
   const [output, setOutput] = useState("");
 
-  const postData = async () => {
+  const handleSubmit = async () => {
+    console.log("Processing message");
+    const newMessage = { role: "user", content: inputValue };
+    
+    // Create new message list with current message
+    const updatedMessageList = [...messageList, newMessage];
+    
+    // Clear input first
+    setInputValue("");
+    // Update message list
+    setMessageList(updatedMessageList);
+
     try {
       let endpoint = "http://127.0.0.1:1234/v1/chat/completions";
 
       const data = {
         model: "gemma-2-2b-it",
-        messages: messageList,
+        messages: updatedMessageList, // Use the updated message list directly
         temperature: 0.7,
         max_tokens: 100,
         stream: false,
@@ -39,37 +51,20 @@ function GameBoxes({ imgSrc }: GameBoxesProps) {
       });
 
       const response = await request.json();
-      console.log(response);
-      return response;
-    } catch (error) {
-      console.error("Error posting data:", error);
-    }
-  };
-
-  const handleResponse = async () => {
-    try {
-      const reply = await postData();
-
-      if (!reply || !reply.choices || reply.choices.length === 0 || !reply.choices[0].message) {
-        console.error("Invalid response from LLM:", reply);
+      
+      if (!response || !response.choices || response.choices.length === 0 || !response.choices[0].message) {
+        console.error("Invalid response from LLM:", response);
         return;
       }
 
-      const repliedMessage = reply.choices[0].message.content;
+      const repliedMessage = response.choices[0].message.content;
       console.log("AI Response:", repliedMessage);
 
       setOutput(marked.parse(repliedMessage));
-      setMessageList(prev => [...prev, { role: "assistant", content: repliedMessage }]);
+      setMessageList([...updatedMessageList, { role: "assistant", content: repliedMessage }]);
     } catch (error) {
-      console.error("Error handling response:", error);
+      console.error("Error in handleSubmit:", error);
     }
-  };
-
-  const handleSubmit = async () => {
-    console.log("Processing message");
-    setMessageList(prev => [...prev, { role: "user", content: inputValue }]);
-    setInputValue("");
-    await handleResponse();
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
