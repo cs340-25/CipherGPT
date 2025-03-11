@@ -47,26 +47,29 @@ function GameBoxes({ imgSrc }: GameBoxesProps) {
   };
 
   const handleResponse = async () => {
-    const reply = await postData();
+    try {
+      const reply = await postData();
 
-    if (!reply || !reply.choices || reply.choices.length === 0 || !reply.choices[0].message) {
-      console.error("Invalid response from LLM:", reply);
-      return;
+      if (!reply || !reply.choices || reply.choices.length === 0 || !reply.choices[0].message) {
+        console.error("Invalid response from LLM:", reply);
+        return;
+      }
+
+      const repliedMessage = reply.choices[0].message.content;
+      console.log("AI Response:", repliedMessage);
+
+      setOutput(marked.parse(repliedMessage));
+      setMessageList(prev => [...prev, { role: "assistant", content: repliedMessage }]);
+    } catch (error) {
+      console.error("Error handling response:", error);
     }
-
-    const repliedMessage = reply.choices[0].message.content;
-    console.log("AI Response:", repliedMessage);
-
-    setOutput(marked.parse(repliedMessage));
-
-    setMessageList([...messageList, { role: "assistant", content: repliedMessage }]);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     console.log("Processing message");
-    setMessageList([...messageList, { role: "user", content: inputValue }]);
+    setMessageList(prev => [...prev, { role: "user", content: inputValue }]);
     setInputValue("");
-    handleResponse();
+    await handleResponse();
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
