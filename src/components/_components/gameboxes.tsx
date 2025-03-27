@@ -2,42 +2,70 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import styles from "@/styles/Loader.module.css";
-import {marked} from "marked";
+
+interface Message {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+}
+
+interface LLMResponse {
+  choices: Array<{
+    message: {
+      content: string;
+    };
+  }>;
+}
 
 interface GameBoxesProps {
   imgSrc: string;
-  systemMessage?: string;
 }
 
-function GameBoxes({ imgSrc, systemMessage }: GameBoxesProps) {
+function GameBoxes({ imgSrc }: GameBoxesProps) {
   const [inputValue, setInputValue] = useState("");
-  const [messageList, setMessageList] = useState([
-    { role: "system", content: systemMessage || "You are a helpful assistant." },
+  const [messages, setMessages] = useState<Message[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const messageListRef = useRef<Message[]>([
+    { 
+      role: "system", 
+      content: "you are to only communicate with emojis and emoticons, nothing else. You are to use no words under no circumstances." 
+    }
   ]);
-  const [output, setOutput] = useState("");
 
-  const handleSubmit = async () => {
-    console.log("Processing message");
-    const newMessage = { role: "user", content: inputValue };
-    
-    // Create new message list with current message
-    const updatedMessageList = [...messageList, newMessage];
-    
-    // Clear input first
-    setInputValue("");
-    // Update message list
-    setMessageList(updatedMessageList);
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
+  useEffect(() => {
+    scrollToBottom();
+    inputRef.current?.focus();
+  }, [messages]);
+
+  const addMessage = (content: string, isUser: boolean) => {
+    const newMessage: Message = {
+      role: isUser ? "user" : "assistant",
+      content: content
+    };
+    setMessages(prev => [...prev, newMessage]);
+    messageListRef.current.push(newMessage);
+  };
+
+  const postData = async (): Promise<LLMResponse | null> => {
     try {
-      let endpoint = "http://127.0.0.1:1234/v1/chat/completions";
-
+      const endpoint = "http://127.0.0.1:1234/v1/chat/completions";
       const data = {
         model: "gemma-2-2b-it",
-        messages: updatedMessageList, // Use the updated message list directly
+        messages: messageListRef.current,
         temperature: 0.7,
-        max_tokens: 100,
+        max_tokens: 200,
         stream: false,
       };
 
@@ -51,49 +79,101 @@ function GameBoxes({ imgSrc, systemMessage }: GameBoxesProps) {
       });
 
       const response = await request.json();
-      
-      if (!response || !response.choices || response.choices.length === 0 || !response.choices[0].message) {
-        console.error("Invalid response from LLM:", response);
-        return;
-      }
-
-      const repliedMessage = response.choices[0].message.content;
-      console.log("AI Response:", repliedMessage);
-
-      setOutput(marked.parse(repliedMessage));
-      setMessageList([...updatedMessageList, { role: "assistant", content: repliedMessage }]);
+      console.log("Raw LLM response:", response);
+      return response;
     } catch (error) {
-      console.error("Error in handleSubmit:", error);
+      console.error("Error posting data:", error);
+      return null;
     }
   };
 
+  const handleResponse = async () => {
+    try {
+      const reply = await postData();
+
+      if (!reply?.choices?.[0]?.message?.content) {
+        console.error("Invalid response from LLM:", reply);
+        addMessage("❌", false);
+        return;
+      }
+
+      const repliedMessage = reply.choices[0].message.content;
+      console.log("AI Response:", repliedMessage);
+      addMessage(repliedMessage, false);
+    } catch (error) {
+      console.error("Error handling response:", error);
+      addMessage("❌", false);
+    }
+  };
+
+  const processNewMessage = () => {
+    const input = inputValue.trim();
+    if (!input) return;
+
+    setInputValue("");
+    addMessage(input, true);
+    void handleResponse();
+  };
+
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
-      handleSubmit();
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      processNewMessage();
     }
   };
 
   return (
-    <div className="mx-auto flex flex-col items-center justify-center">
-      <img src={imgSrc} alt="Custom" className="w-40" />
-      <Card className="mt-4 h-80 w-[90%] shadow-md">
-        <div className="flex justify-center items-center h-full">
-          <div className={styles["lds-ripple"]}>
-            <div></div>
-            <div></div>
+    <div className="mx-auto flex flex-col items-center min-h-screen bg-white px-4 py-4">
+      <div className="text-center w-full max-w-xl mb-4">
+        <h1 className="text-4xl font-bold text-[#8A2BE2] mb-1">Emoji Trivia</h1>
+        <p className="text-gray-600 text-lg">Guess the animal based on the AI response</p>
+      </div>
+      <Card className="h-[calc(100vh-140px)] w-full max-w-xl shadow-lg overflow-hidden flex flex-col bg-white">
+        <div className="flex-1 overflow-auto p-4 space-y-2">
+          {messages.map((message, index) => {
+            const isUser = message.role === "user";
+            return (
+              <div
+                key={index}
+                className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`
+                    max-w-[70%] px-4 py-2 
+                    ${isUser ? "bg-[#8A2BE2] text-white" : "bg-[#F0F0F0] text-black"}
+                    rounded-[20px]
+                  `}
+                >
+                  <div className="whitespace-pre-wrap break-words text-lg">
+                    {message.content}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="p-4 bg-[#F8F9FB] border-t border-gray-100">
+          <div className="flex gap-2 items-center">
+            <Input
+              ref={inputRef}
+              className="h-12 text-left bg-white border-gray-200 rounded-full px-6 text-lg"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type your guess here..."
+            />
+            <Button 
+              onClick={processNewMessage}
+              disabled={!inputValue.trim()}
+              className="h-12 rounded-full px-6 min-w-[100px] bg-[#8A2BE2] hover:bg-[#7B1FA2] text-white font-medium text-lg"
+            >
+              Send
+            </Button>
           </div>
         </div>
       </Card>
-      <Input
-        className="h-15 mt-4 w-[90%] text-center font-semibold shadow-md"
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-      />
-      <Button className="mt-6" onClick={handleSubmit}>
-        Submit
-      </Button>
-      <div id="output" dangerouslySetInnerHTML={{ __html: output }}></div>
     </div>
   );
 }
