@@ -41,6 +41,58 @@ const ANIMALS = [
   "Turtle"
 ];
 
+
+const PLACES = [
+  "Knoxville, TN",
+  "New York City, NY",
+  "Los Angeles, CA",
+  "Nashville, TN" ,
+  "Rome, Italy", 
+  "Miami, FL",  
+  "Detroit, MI"
+];
+
+const PEOPLE = [  
+  "Donald Trump",
+  "Tiger Woods",
+  "Justin Bieber",
+  "Jack Black",
+  "Al Capone",
+  "Napoleon Bonaparte",
+];
+
+const SPORTS = [  
+  "Football",
+  "Basketball",
+  "Wrestling",
+  "Lacrosse",
+  "Baseball",
+  "Hockey", 
+  "Soccer",
+  "Volleyball",
+  "Golf"
+];
+
+
+const CARMAKERS = [
+  "Subaru",
+  "Ford",
+  "Cadillac",
+  "Mercedes Benz",
+  "Ram",
+  "Jeep",
+  "Honda"
+];
+
+const CATEGORIES = {
+  ANIMALS,
+  PLACES,
+  PEOPLE,
+  SPORTS,
+  CARMAKERS
+};
+
+
 function GameBoxes({ imgSrc }: GameBoxesProps) {
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -148,6 +200,7 @@ function GameBoxes({ imgSrc }: GameBoxesProps) {
   };
 
   const checkGuess = (guess: string) => {
+    //search guess for answer
     if (guess.toLowerCase() === currentAnimal.toLowerCase()) {
       setScore(prev => prev + 1);
       addMessage("🎉 Correct! Starting new round...", false);
