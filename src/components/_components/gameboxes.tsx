@@ -90,7 +90,7 @@ function GameBoxes({ imgSrc }: GameBoxesProps) {
   const [score, setScore] = useState(0);
   const [incorrectGuesses, setIncorrectGuesses] = useState(0);
   const [gameOver, setGameOver] = useState(false);
-  const [currentAnimal, setCurrentAnimal] = useState("");
+  const [currentItem, setCurrentItem] = useState("");
   const [username, setUsername] = useState("");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -98,21 +98,35 @@ function GameBoxes({ imgSrc }: GameBoxesProps) {
   const messageListRef = useRef<Message[]>([]);
   const router = useRouter();
 
-  const getRandomAnimal = (): string => {
-    const index = Math.floor(Math.random() * ANIMALS.length);
-    return ANIMALS[index]!;
+  const getRandomThing = (): [string, string] => {
+    const tuple = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
+    if(tuple) {
+      const [catname, catlist] = tuple;
+      const thing = catlist[Math.floor(Math.random() * catlist.length)];
+      if(thing) return [catname, thing];
+      else return ["invalid", "invalid"];
+    }
+    else return ["invalid", "invalid"];
   };
 
+
   const initializeGame = () => {
-    const animal = getRandomAnimal();
-    setCurrentAnimal(animal);
+    const toGuess: [string, string] = getRandomThing();
+    setCurrentItem(toGuess[1]);
     setIncorrectGuesses(0);
     setGameOver(false);
     messageListRef.current = [
+      /*
       {
         role: "system",
         content: `You are an interface in a trivia game where the player needs to guess the correct animal. You are to only communicate with emojis and emoticons, nothing else. You are to use no words under no circumstances.`,
       },
+      */
+      {
+        role: "system",
+        content: `You are playing a game where you must describe an item from the following category ${toGuess[0]} using only emojis. The current item to describe is ${toGuess[1]}. if there are any emojis directly associated with ${toGuess[1]}, your responses should NOT include those emojis. Your responses should include ONLY the emojis used to describe ${toGuess[1]}`
+      },
+      /*
       {
         role: "system",
         content:
@@ -121,7 +135,7 @@ function GameBoxes({ imgSrc }: GameBoxesProps) {
       {
         role: "system",
         content: `In your responses, you are not allowed to use animal emojis or any emoji that specifically shows the answer in one emoji, and will instead need to use their attributes in order to get the message across. The current animal to describe is: ${animal}. In the first clue exclusively include emojis for the color of the animal, emojis for where it lives, and emojis for other main traits it has.`,
-      },
+      },*/
     ];
     setMessages([]);
     void handleResponse();
@@ -194,7 +208,7 @@ function GameBoxes({ imgSrc }: GameBoxesProps) {
   };
 
   const checkGuess = (guess: string) => {
-    if (guess.toLowerCase() === currentAnimal.toLowerCase()) {
+    if (guess.toLowerCase().includes(currentItem.toLowerCase())) {
       setScore((prev) => prev + 1);
       setIncorrectGuesses(0);
       addMessage("🎉 Correct! Starting new round...", false);
@@ -218,6 +232,11 @@ function GameBoxes({ imgSrc }: GameBoxesProps) {
     if (!input || gameOver) return;
 
     setInputValue("");
+    const newMessage : Message = {
+      role : "system",
+      content: `The user guessed ${input}. If that's incorrect try describing ${currentItem} with different emojis. Remember all of your responses should consist ENTIRELY of emojis and nothing else`
+    }
+    messageListRef.current.push(newMessage);
     addMessage(input, true);
 
     if (!checkGuess(input)) {
