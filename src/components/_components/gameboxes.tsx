@@ -4,16 +4,11 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useState, useRef, useEffect } from "react";
 import styles from "@/styles/Loader.module.css";
+import { useRouter } from "next/navigation";
 
 interface Message {
   role: "system" | "user" | "assistant";
   content: string;
-}
-
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-  timestamp: string;
 }
 
 interface LLMResponse {
@@ -38,69 +33,22 @@ const ANIMALS = [
   "Pigeon",
   "Alligator",
   "Frog",
-  "Turtle"
+  "Turtle",
 ];
-
-
-const PLACES = [
-  "Knoxville, TN",
-  "New York City, NY",
-  "Los Angeles, CA",
-  "Nashville, TN" ,
-  "Rome, Italy", 
-  "Miami, FL",  
-  "Detroit, MI"
-];
-
-const PEOPLE = [  
-  "Donald Trump",
-  "Tiger Woods",
-  "Justin Bieber",
-  "Jack Black",
-  "Al Capone",
-  "Napoleon Bonaparte",
-];
-
-const SPORTS = [  
-  "Football",
-  "Basketball",
-  "Wrestling",
-  "Lacrosse",
-  "Baseball",
-  "Hockey", 
-  "Soccer",
-  "Volleyball",
-  "Golf"
-];
-
-
-const CARMAKERS = [
-  "Subaru",
-  "Ford",
-  "Cadillac",
-  "Mercedes Benz",
-  "Ram",
-  "Jeep",
-  "Honda"
-];
-
-const CATEGORIES = {
-  ANIMALS,
-  PLACES,
-  PEOPLE,
-  SPORTS,
-  CARMAKERS
-};
-
 
 function GameBoxes({ imgSrc }: GameBoxesProps) {
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [score, setScore] = useState(0);
+  const [incorrectGuesses, setIncorrectGuesses] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
   const [currentAnimal, setCurrentAnimal] = useState("");
+  const [username, setUsername] = useState("");
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messageListRef = useRef<Message[]>([]);
+  const router = useRouter();
 
   const getRandomAnimal = (): string => {
     const index = Math.floor(Math.random() * ANIMALS.length);
@@ -110,20 +58,22 @@ function GameBoxes({ imgSrc }: GameBoxesProps) {
   const initializeGame = () => {
     const animal = getRandomAnimal();
     setCurrentAnimal(animal);
+    setIncorrectGuesses(0);
+    setGameOver(false);
     messageListRef.current = [
-      { 
-        role: "system", 
-        content: `You are an interface in a trivia game where the player needs to guess the correct animal. You are to only communicate with emojis and emoticons, nothing else. You are to use no words under no circumstances.` 
+      {
+        role: "system",
+        content: `You are an interface in a trivia game where the player needs to guess the correct animal. You are to only communicate with emojis and emoticons, nothing else. You are to use no words under no circumstances.`,
       },
       {
         role: "system",
-        content: "With concurrent guesses from the player, you will try to provide them with different guesses as to what the animal is."
+        content:
+          "With concurrent guesses from the player, you will try to provide them with different guesses as to what the animal is.",
       },
       {
         role: "system",
-        content: `in your responses, you are not allowed to use animal emojis or any emoji that specifically shows the answer in one emoji, and will instead need to use their attributes in order to get the message across, The current animal to describe is: ${animal}, in the first clue exclusively include emojis for the color of the animal, emojis for where it lives, and emojis for other main traits it has`
-      }
-
+        content: `In your responses, you are not allowed to use animal emojis or any emoji that specifically shows the answer in one emoji, and will instead need to use their attributes in order to get the message across. The current animal to describe is: ${animal}. In the first clue exclusively include emojis for the color of the animal, emojis for where it lives, and emojis for other main traits it has.`,
+      },
     ];
     setMessages([]);
     void handleResponse();
@@ -145,9 +95,9 @@ function GameBoxes({ imgSrc }: GameBoxesProps) {
   const addMessage = (content: string, isUser: boolean) => {
     const newMessage: Message = {
       role: isUser ? "user" : "assistant",
-      content: content
+      content: content,
     };
-    setMessages(prev => [...prev, newMessage]);
+    setMessages((prev) => [...prev, newMessage]);
     messageListRef.current.push(newMessage);
   };
 
@@ -172,7 +122,6 @@ function GameBoxes({ imgSrc }: GameBoxesProps) {
       });
 
       const response = (await request.json()) as LLMResponse;
-      console.log("Raw LLM response:", response);
       return response;
     } catch (error) {
       console.error("Error posting data:", error);
@@ -185,40 +134,44 @@ function GameBoxes({ imgSrc }: GameBoxesProps) {
       const reply = await postData();
 
       if (!reply?.choices?.[0]?.message?.content) {
-        console.error("Invalid response from LLM:", reply);
         addMessage("❌", false);
         return;
       }
 
       const repliedMessage = reply.choices[0].message.content;
-      console.log("AI Response:", repliedMessage);
       addMessage(repliedMessage, false);
     } catch (error) {
-      console.error("Error handling response:", error);
       addMessage("❌", false);
     }
   };
 
   const checkGuess = (guess: string) => {
-    //search guess for answer
     if (guess.toLowerCase() === currentAnimal.toLowerCase()) {
-      setScore(prev => prev + 1);
+      setScore((prev) => prev + 1);
+      setIncorrectGuesses(0);
       addMessage("🎉 Correct! Starting new round...", false);
       setTimeout(() => {
         initializeGame();
       }, 1500);
       return true;
     }
+
+    setIncorrectGuesses((prev) => {
+      const newCount = prev + 1;
+      if (newCount >= 3) setGameOver(true);
+      return newCount;
+    });
+
     return false;
   };
 
   const processNewMessage = () => {
     const input = inputValue.trim();
-    if (!input) return;
+    if (!input || gameOver) return;
 
     setInputValue("");
     addMessage(input, true);
-    
+
     if (!checkGuess(input)) {
       void handleResponse();
     }
@@ -231,15 +184,55 @@ function GameBoxes({ imgSrc }: GameBoxesProps) {
     }
   };
 
+  const handleSubmitScore = () => {
+    const name = prompt("Enter a username for the leaderboard:");
+    if (!name) return;
+
+    const submission = {
+      username: name,
+      score: score,
+    };
+
+    console.log("Score Submission:", JSON.stringify(submission, null, 2));
+    // Go to home screen after short delay
+    setTimeout(() => {
+      router.push("/");
+    }, 500);
+  };
+
   return (
-    <div className="mx-auto flex flex-col items-center min-h-screen bg-white px-4 py-4">
-      <div className="text-center w-full max-w-xl mb-4">
-        <h1 className="text-4xl font-bold text-[#8A2BE2] mb-1">Emoji Trivia</h1>
-        <p className="text-gray-600 text-lg">Guess the animal based on the AI response</p>
+    <div className="relative mx-auto flex min-h-screen flex-col items-center bg-white px-4 py-4">
+      {gameOver && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black bg-opacity-80 text-white">
+          <h1 className="mb-6 text-5xl font-bold">Game Over 😢</h1>
+          <p className="mb-8 text-xl">You made 3 incorrect guesses.</p>
+
+          <Button
+            className="rounded-full bg-[#8A2BE2] px-8 py-3 text-lg text-white hover:bg-[#7B1FA2]"
+            onClick={initializeGame}
+          >
+            Restart Game
+          </Button>
+          <Button
+            className="my-4 rounded-full px-8 py-3 text-lg text-black"
+            variant="outline"
+            onClick={handleSubmitScore}
+          >
+            Submit Score to Leaderboard
+          </Button>
+        </div>
+      )}
+
+      <div className="mb-4 w-full max-w-xl text-center">
+        <h1 className="mb-1 text-4xl font-bold text-[#8A2BE2]">Emoji Trivia</h1>
+        <p className="text-lg text-gray-600">
+          Guess the animal based on the AI response
+        </p>
       </div>
-      <div className="flex gap-6 w-full max-w-3xl">
-        <Card className="h-[calc(100vh-140px)] flex-1 shadow-lg overflow-hidden flex flex-col bg-white">
-          <div className="flex-1 overflow-auto p-4 space-y-2">
+
+      <div className="flex w-full max-w-3xl gap-6">
+        <Card className="flex h-[calc(100vh-140px)] flex-1 flex-col overflow-hidden bg-white shadow-lg">
+          <div className="flex-1 space-y-2 overflow-auto p-4">
             {messages.map((message, index) => {
               const isUser = message.role === "user";
               return (
@@ -248,11 +241,11 @@ function GameBoxes({ imgSrc }: GameBoxesProps) {
                   className={`flex ${isUser ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`
-                      max-w-[70%] px-4 py-2 
-                      ${isUser ? "bg-[#8A2BE2] text-white" : "bg-[#F0F0F0] text-black"}
-                      rounded-[20px]
-                    `}
+                    className={`max-w-[70%] px-4 py-2 ${
+                      isUser
+                        ? "bg-[#8A2BE2] text-white"
+                        : "bg-[#F0F0F0] text-black"
+                    } rounded-[20px]`}
                   >
                     <div className="whitespace-pre-wrap break-words text-lg">
                       {message.content}
@@ -264,29 +257,33 @@ function GameBoxes({ imgSrc }: GameBoxesProps) {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="p-4 bg-[#F8F9FB] border-t border-gray-100">
-            <div className="flex gap-2 items-center">
+          <div className="border-t border-gray-100 bg-[#F8F9FB] p-4">
+            <div className="flex items-center gap-2">
               <Input
                 ref={inputRef}
-                className="h-12 text-left bg-white border-gray-200 rounded-full px-6 text-lg"
+                className="h-12 rounded-full border-gray-200 bg-white px-6 text-left text-lg"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Type your guess here..."
+                disabled={gameOver}
               />
-              <Button 
+              <Button
                 onClick={processNewMessage}
-                disabled={!inputValue.trim()}
-                className="h-12 rounded-full px-6 min-w-[100px] bg-[#8A2BE2] hover:bg-[#7B1FA2] text-white font-medium text-lg"
+                disabled={!inputValue.trim() || gameOver}
+                className="h-12 min-w-[100px] rounded-full bg-[#8A2BE2] px-6 text-lg font-medium text-white hover:bg-[#7B1FA2]"
               >
-                Send
+                Guess
               </Button>
             </div>
           </div>
         </Card>
-        <Card className="w-48 h-[calc(100vh-140px)] p-4 flex flex-col items-center bg-white shadow-lg">
-          <h2 className="text-2xl font-bold text-[#8A2BE2] mb-4">Score</h2>
-          <div className="text-6xl font-bold text-gray-800">{score}</div>
+
+        <Card className="flex h-[calc(100vh-140px)] w-48 flex-col items-center bg-white p-4 shadow-lg">
+          <h2 className="mb-4 text-2xl font-bold text-[#8A2BE2]">Score</h2>
+          <div className="mb-4 text-6xl font-bold text-gray-800">{score}</div>
+          <h3 className="text-xl text-gray-500">Incorrect</h3>
+          <div className="text-4xl text-red-500">{incorrectGuesses}</div>
         </Card>
       </div>
     </div>

@@ -18,3 +18,10 @@ model Post {
 
     @@index([name])
 }
+
+model Leaderboard {
+    id        String      @id @default(cuid())
+    name      String
+    score     Int
+    createdAt DateTime @default(now())
+}

@@ -6,7 +6,7 @@ import { type Metadata } from "next";
 export const metadata: Metadata = {
   title: "CipherGPT",
   description: "LLM based game",
-  icons: [{ rel: "icon", url: "/favicon.ico" }],
+  icons: [{ rel: "icon", url: "/decipher.png" }],
 };
 
 export default function RootLayout({
