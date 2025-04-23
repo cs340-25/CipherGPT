@@ -36,6 +36,54 @@ const ANIMALS = [
   "Turtle",
 ];
 
+const PEOPLE = [
+  "George Washington",
+  "Donald Trump",
+  "Kobe Bryant",
+  "Justin Bieber",
+  "Taylor Swift",
+  "Michelle Obama",
+  "Christopher Columbus",
+  "Marie Curie",
+  "Helen Keller",
+  "Napoleon Bonaparte",
+  "Hammurabi",
+  "Elvis Presley"
+];
+
+const SPORTS = [
+  "Golf",
+  "Wrestling",
+  "Basketball",
+  "Baseball",
+  "Football",
+  "Hockey",
+  "Water Polo",
+  "Soccer"
+];
+
+const CARMAKERS = [
+  "Ford",
+  "Subaru",
+  "Jeep",
+  "Mercedes Benz",
+  "Ram",
+  "Dodge",
+  "Chrysler",
+  "Cadillac",
+  "Honda",
+  "Volvo",
+  "Kia",
+  "Volkswagen"
+];
+
+const CATEGORIES: [string, string[]][] = [
+  ["Carmakers" , CARMAKERS],
+  ["Sports" , SPORTS],
+  ["People", PEOPLE],
+  ["Animals", ANIMALS]
+];
+
 function GameBoxes({ imgSrc }: GameBoxesProps) {
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
