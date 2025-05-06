@@ -15,16 +15,7 @@ export default function Page() {
         {" "}
         {/* Aligned items vertically */}
         {/* Container for the top right icon and text */}
-        <Link href="/leaderboard">
-          <FontAwesomeIcon
-            icon={faRankingStar}
-            className="mr-2 h-12 hover:cursor-pointer"
-          />{" "}
-        </Link>
-        <div className="text-2xl font-bold">
-          {/* Added mr-2 for spacing */}
-          Leaderboard
-        </div>
+        
       </div>
       <div className="flex flex-grow flex-col items-center justify-center py-2">
         {" "}

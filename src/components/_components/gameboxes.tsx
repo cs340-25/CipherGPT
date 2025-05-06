@@ -280,13 +280,13 @@ function GameBoxes({ imgSrc }: GameBoxesProps) {
           >
             Restart Game
           </Button>
-          <Button
+          {/* <Button
             className="my-4 rounded-full px-8 py-3 text-lg text-black"
             variant="outline"
             onClick={handleSubmitScore}
           >
             Submit Score to Leaderboard
-          </Button>
+          </Button> */}
         </div>
       )}
 
